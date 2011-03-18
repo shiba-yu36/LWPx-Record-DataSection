@@ -39,32 +39,19 @@ sub import {
         $Option->{$key} = $value;
     }
 
-    for (my $level = 0; ; $level++) {
-        my ($pkg, $file) = caller($level) or last;
-        next unless $file eq $0;
+    my ($pkg, $file) = caller or return;
+    ($Pkg, $File) = ($pkg, $file);
+    on_scope_end {
+        $class->load_data;
 
-        if (defined $Pkg && $pkg ne $Pkg) {
-            require Carp;
-            Carp::croak("only one class can use $class");
+        # append __DATA__ section only when direct import
+        if (not defined $Data) {
+            __PACKAGE__->append_to_file("\n__DATA__\n\n");
+            $Data = {};
         }
 
-        ($Pkg, $File) = ($pkg, $file);
-        on_scope_end {
-            $class->load_data;
-
-            # append __DATA__ section only when direct import
-            if ($level == 0 && not defined $Data) {
-                __PACKAGE__->append_to_file("\n__DATA__\n\n");
-                $Data = {};
-            }
-
-            LWP::Protocol::Fake->fake;
-        };
-        return;
-    }
-
-    require Carp;
-    Carp::croak "Suitable file not found: $0";
+        LWP::Protocol::Fake->fake;
+    };
 }
 
 sub load_data {
